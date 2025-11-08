@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect } from "react";
 import {
   Button,
@@ -14,8 +13,14 @@ import {
 import { Add, Folder } from "@mui/icons-material";
 import { useSelector } from "react-redux";
 import type { RootState } from "../redux/store";
-
 import { useNavigate } from "react-router-dom";
+
+import {
+  fetchWorkspaces,
+  createWorkspace,
+  updateWorkspace,
+  deleteWorkspace,
+} from "../services/dashboardService";
 
 interface Workspace {
   _id: string;
@@ -26,7 +31,6 @@ interface Workspace {
 
 const Dashboard = () => {
   const navigate = useNavigate();
-
   const user = useSelector((state: RootState) => state.user);
   const token = useSelector((state: RootState) => state.token);
 
@@ -47,94 +51,61 @@ const Dashboard = () => {
     null
   );
 
-  const fetchWorkspaces = async () => {
+  // Fetch all user workspaces
+  const loadWorkspaces = async () => {
     if (!user?.nid) return;
     setFetching(true);
-
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_BASE_API_URL}/workspace/${user.nid}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const data = await response.json();
-      if (data.success) {
-        setWorkspaces(data.workspaces);
-      }
+      const data = await fetchWorkspaces(user.nid, token!);
+      if (data.success) setWorkspaces(data.workspaces);
     } catch (error) {
-      console.log("Error fetching workspaces:", error);
+      console.error(error);
     } finally {
       setFetching(false);
     }
   };
 
   useEffect(() => {
-    fetchWorkspaces();
+    loadWorkspaces();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Create a new workspace
   const handleCreateWorkspace = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!workspaceName.trim()) return;
+    if (!workspaceName.trim() || !user?.nid) return;
 
     setLoading(true);
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_BASE_API_URL}/workspace`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            name: workspaceName,
-            userNid: user?.nid,
-          }),
-        }
-      );
-
-      const data = await response.json();
+      const data = await createWorkspace(workspaceName, user.nid, token!);
       if (data.success) {
         setWorkspaces((prev) => [...prev, data.workspace]);
         setWorkspaceName("");
         setOpen(false);
       }
     } catch (error) {
-      console.log("Error creating workspace:", error);
+      console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
+  // Open edit dialog
   const handleOpenEdit = (ws: Workspace) => {
     setSelectedWorkspace(ws);
     setNewName(ws.name);
     setEditOpen(true);
   };
 
+  // Update workspace name
   const handleUpdateWorkspace = async () => {
     if (!selectedWorkspace) return;
-
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_BASE_API_URL}/workspace/${
-          selectedWorkspace._id
-        }`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ name: newName }),
-        }
+      const data = await updateWorkspace(
+        selectedWorkspace._id,
+        newName,
+        token!
       );
-
-      const data = await response.json();
       if (data.success) {
         setWorkspaces((prev) =>
           prev.map((ws) =>
@@ -144,10 +115,11 @@ const Dashboard = () => {
         setEditOpen(false);
       }
     } catch (error) {
-      console.error("Error updating workspace:", error);
+      console.error(error);
     }
   };
 
+  // Delete workspace confirmation
   const handleDeleteWorkspace = (id: string) => {
     setSelectedWorkspaceId(id);
     setOpenDeleteDialog(true);
@@ -155,26 +127,15 @@ const Dashboard = () => {
 
   const confirmDeleteWorkspace = async () => {
     if (!selectedWorkspaceId) return;
-
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_BASE_API_URL}/workspace/${selectedWorkspaceId}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const data = await response.json();
+      const data = await deleteWorkspace(selectedWorkspaceId, token!);
       if (data.success) {
         setWorkspaces((prev) =>
           prev.filter((ws) => ws._id !== selectedWorkspaceId)
         );
       }
     } catch (error) {
-      console.error("Error deleting workspace:", error);
+      console.error(error);
     } finally {
       setOpenDeleteDialog(false);
       setSelectedWorkspaceId(null);
@@ -190,12 +151,7 @@ const Dashboard = () => {
           alignItems="center"
           mb={4}
         >
-          <Typography
-            variant="h6"
-            sx={{
-              fontWeight: "bold",
-            }}
-          >
+          <Typography variant="h6" fontWeight="bold">
             My Workspaces
           </Typography>
           <Button
@@ -236,13 +192,11 @@ const Dashboard = () => {
                     "&:hover": { boxShadow: 4 },
                   }}
                 >
-                  {/* Top Section: Folder + Name + Actions */}
                   <Box
                     display="flex"
                     alignItems="center"
                     justifyContent="space-between"
                   >
-                    {/* Workspace Info */}
                     <Box
                       display="flex"
                       gap={2}
@@ -261,7 +215,6 @@ const Dashboard = () => {
                       </Box>
                     </Box>
 
-                    {/* Action Buttons */}
                     <Box display="flex" gap={1} sx={{ marginLeft: 1 }}>
                       <Button
                         size="small"
@@ -298,6 +251,7 @@ const Dashboard = () => {
         )}
       </Box>
 
+      {/* Create Dialog */}
       <Dialog open={open} onClose={() => setOpen(false)}>
         <DialogTitle>Create Workspace</DialogTitle>
         <DialogContent>
@@ -321,6 +275,8 @@ const Dashboard = () => {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Dialog */}
       <Dialog open={editOpen} onClose={() => setEditOpen(false)}>
         <DialogTitle>Rename Workspace</DialogTitle>
         <DialogContent>
@@ -342,6 +298,7 @@ const Dashboard = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Delete Dialog */}
       <Dialog
         open={openDeleteDialog}
         onClose={() => setOpenDeleteDialog(false)}
@@ -349,7 +306,7 @@ const Dashboard = () => {
         <DialogTitle>Delete Workspace</DialogTitle>
         <DialogContent>
           <Typography sx={{ mt: 2 }}>
-            Are you sure you want to delete this workspace? Fakkar fel mawdoo3
+            Are you sure you want to delete this workspace?
           </Typography>
           <Button
             variant="contained"

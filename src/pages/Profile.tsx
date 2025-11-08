@@ -5,13 +5,14 @@ import { useDispatch } from "react-redux";
 import { updateUser } from "../redux/features/authSlice";
 import { Box, Typography, TextField, Button, Paper } from "@mui/material";
 
+const BASE_URL = import.meta.env.VITE_BASE_API_URL;
+
 const ProfilePage = () => {
   const dispatch = useDispatch();
-  // 🔹 Read user & token from Redux store
+
   const user = useSelector((state: RootState) => state.user);
   const token = useSelector((state: RootState) => state.token);
 
-  // 🔹 Local state for editable name
   const [name, setName] = useState(user?.name || "");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -21,17 +22,14 @@ const ProfilePage = () => {
     setMessage("");
 
     try {
-      const res = await fetch(
-        `${import.meta.env.VITE_BASE_API_URL}/user/profile/update-name`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ name }),
-        }
-      );
+      const res = await fetch(`${BASE_URL}/user/profile/update-name`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ name }),
+      });
 
       const data = await res.json();
 

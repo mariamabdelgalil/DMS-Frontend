@@ -1,11 +1,10 @@
+const BASE_URL = import.meta.env.VITE_BASE_API_URL;
+
 export const fetchDeletedDocuments = async (token: string) => {
   try {
-    const res = await fetch(
-      `${import.meta.env.VITE_BASE_API_URL}/documents/deleted/all`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
+    const res = await fetch(`${BASE_URL}/documents/deleted/all`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
     const data = await res.json();
     return data;
   } catch (err) {
@@ -16,13 +15,10 @@ export const fetchDeletedDocuments = async (token: string) => {
 
 export const restoreDocument = async (id: string, token: string) => {
   try {
-    const res = await fetch(
-      `${import.meta.env.VITE_BASE_API_URL}/documents/${id}/restore`,
-      {
-        method: "PUT",
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
+    const res = await fetch(`${BASE_URL}/documents/${id}/restore`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${token}` },
+    });
     const data = await res.json();
     return data;
   } catch (err) {
@@ -33,13 +29,10 @@ export const restoreDocument = async (id: string, token: string) => {
 
 export const permanentlyDeleteDocument = async (id: string, token: string) => {
   try {
-    const res = await fetch(
-      `${import.meta.env.VITE_BASE_API_URL}/documents/${id}/permanent-delete`,
-      {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
+    const res = await fetch(`${BASE_URL}/documents/${id}/permanent-delete`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
     const data = await res.json();
     return data;
   } catch (err) {
