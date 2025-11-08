@@ -71,7 +71,7 @@ const RecycleBinPage = () => {
 
   return (
     <Box sx={{ p: 4 }}>
-      <Typography variant="h5" fontWeight="bold" gutterBottom>
+      <Typography variant="h5" fontWeight="bold" gutterBottom color="#8B4513">
         Recycle Bin
       </Typography>
 

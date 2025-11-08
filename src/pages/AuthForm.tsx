@@ -5,7 +5,6 @@ import {
   Button,
   TextField,
   Typography,
-  // useMediaQuery,
   Card,
   CardContent,
 } from "@mui/material";
@@ -14,6 +13,7 @@ import * as Yup from "yup";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { setLogin } from "../redux/features/authSlice";
+import { registerUser, loginUser } from "../services/authService";
 
 const registerSchema = Yup.object().shape({
   name: Yup.string().required("Required"),
@@ -32,42 +32,25 @@ const loginSchema = Yup.object().shape({
 const AuthForm = () => {
   const [pageType, setPageType] = useState<"login" | "register">("login");
   const isLogin = pageType === "login";
-  // const isNonMobile = useMediaQuery("(min-width:900px)");
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const handleRegister = async (values: any, onSubmitProps: any) => {
-    const res = await fetch(
-      `${import.meta.env.VITE_BASE_API_URL}/auth/register`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
-      }
-    );
-    const data = await res.json();
-    onSubmitProps.resetForm();
-    if (res.ok) setPageType("login");
-    else alert(data.message || "Registration failed");
-  };
-
-  const handleLogin = async (values: any, onSubmitProps: any) => {
-    const res = await fetch(`${import.meta.env.VITE_BASE_API_URL}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(values),
-    });
-    const data = await res.json();
-    onSubmitProps.resetForm();
-    if (res.ok) {
-      dispatch(setLogin({ user: data.user, token: data.token }));
-      navigate("/dashboard");
-    } else alert(data.message || "Login failed");
-  };
-
   const handleFormSubmit = async (values: any, onSubmitProps: any) => {
-    if (isLogin) await handleLogin(values, onSubmitProps);
-    else await handleRegister(values, onSubmitProps);
+    try {
+      if (isLogin) {
+        const data = await loginUser(values);
+        dispatch(setLogin({ user: data.user, token: data.token }));
+        navigate("/dashboard");
+      } else {
+        await registerUser(values);
+        alert("Registration successful! Please login.");
+        setPageType("login");
+      }
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      onSubmitProps.resetForm();
+    }
   };
 
   return (
@@ -88,7 +71,7 @@ const AuthForm = () => {
           boxShadow: 4,
           overflow: "hidden",
           display: "flex",
-          flexDirection: { xs: "column", md: "row" }, // responsive
+          flexDirection: { xs: "column", md: "row" },
         }}
       >
         {/* Left Column - Form Section */}
@@ -111,7 +94,6 @@ const AuthForm = () => {
             Welcome to DocSimple, Your Docs management made simple!
           </Typography>
 
-          {/* Formik Form stays exactly the same */}
           <Formik
             initialValues={
               isLogin
@@ -216,7 +198,7 @@ const AuthForm = () => {
             flex: 1,
             display: { xs: "none", md: "block" },
             backgroundImage:
-              'url("https://images.unsplash.com/photo-1568844590215-b7d899a731b4?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=687")',
+              'url("https://images.unsplash.com/photo-1568844590215-b7d899a731b4?ixlib=rb-4.1.0&auto=format&fit=crop&q=80&w=687")',
             backgroundSize: "cover",
             backgroundPosition: "center",
           }}

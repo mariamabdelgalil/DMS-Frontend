@@ -151,8 +151,8 @@ const Dashboard = () => {
           alignItems="center"
           mb={4}
         >
-          <Typography variant="h6" fontWeight="bold">
-            My Workspaces
+          <Typography variant="h5" fontWeight="bold" color="#8B4513">
+            Dashboard
           </Typography>
           <Button
             variant="contained"
