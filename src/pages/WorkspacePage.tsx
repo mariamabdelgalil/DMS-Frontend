@@ -23,6 +23,17 @@ import {
   InputAdornment,
 } from "@mui/material";
 
+import {
+  fetchDocuments,
+  fetchPreview,
+  uploadDocument,
+  deleteDocument,
+  updateDocument,
+  viewDocument,
+  downloadDocument,
+  searchDocuments,
+} from "../services/documentService";
+
 interface Document {
   _id: string;
   name: string;
@@ -68,44 +79,25 @@ const WorkspacePage = () => {
   //preview
   const [hoveredPreview, setHoveredPreview] = useState<string | null>(null);
   const [hoveredDocId, setHoveredDocId] = useState<string | null>(null);
-
-  const fetchDocuments = async () => {
+  const loadDocuments = async () => {
+    setLoading(true);
     try {
-      let url = `${
-        import.meta.env.VITE_BASE_API_URL
-      }/documents/workspace/${id}`;
-      const params = new URLSearchParams();
-
-      if (typeFilter) params.append("type", typeFilter);
-      if (sortBy) params.append("sort", sortBy);
-
-      if (params.toString()) url += `?${params.toString()}`;
-
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
+      const data = await fetchDocuments(token!, id!, typeFilter, sortBy);
       if (data.success) setDocuments(data.documents);
-    } catch (error) {
-      console.log("Error fetching documents:", error);
+    } catch (err) {
+      console.error("Error fetching docs:", err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchDocuments();
+    loadDocuments();
   }, [id, typeFilter, sortBy]);
 
-  const fetchPreview = async (docId: string) => {
+  const handlePreview = async (docId: string) => {
     try {
-      const res = await fetch(
-        `${import.meta.env.VITE_BASE_API_URL}/documents/${docId}/preview`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      const data = await res.json();
+      const data = await fetchPreview(token!, docId);
       if (data.success) setHoveredPreview(data.preview);
     } catch (error) {
       console.error("Error loading preview:", error);
@@ -114,53 +106,22 @@ const WorkspacePage = () => {
 
   const handleUpload = async () => {
     if (!selectedFile || !id) return;
-    const formData = new FormData();
-    formData.append("file", selectedFile);
-    formData.append("workspaceId", id);
-
-    try {
-      const res = await fetch(
-        `${import.meta.env.VITE_BASE_API_URL}/documents/upload`,
-        {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-          body: formData,
-        }
-      );
-      const data = await res.json();
-      if (data.success) {
-        setDocuments((prev) => [...prev, data.document]);
-        setOpenUploadDialog(false);
-        setSelectedFile(null);
-      }
-    } catch (error) {
-      console.error("Error uploading document:", error);
+    const data = await uploadDocument(token!, selectedFile, id);
+    if (data.success) {
+      setDocuments((prev) => [...prev, data.document]);
+      setOpenUploadDialog(false);
+      setSelectedFile(null);
     }
   };
 
-  const handleDeleteDocument = async () => {
+  const handleDelete = async () => {
     if (!documentToDelete) return;
-
-    try {
-      const res = await fetch(
-        `${
-          import.meta.env.VITE_BASE_API_URL
-        }/documents/${documentToDelete}/soft-delete`,
-        {
-          method: "PUT",
-          headers: { Authorization: `Bearer ${token}` },
-        }
+    const data = await deleteDocument(token!, documentToDelete);
+    if (data.message === "Document soft-deleted successfully") {
+      setDocuments((prev) =>
+        prev.filter((doc) => doc._id !== documentToDelete)
       );
-      const data = await res.json();
-
-      if (data.message === "Document soft-deleted successfully") {
-        setDocuments((prev) =>
-          prev.filter((doc) => doc._id !== documentToDelete)
-        );
-        setOpenDeleteDialog(false);
-      }
-    } catch (error) {
-      console.error("Error deleting document:", error);
+      setOpenDeleteDialog(false);
     }
   };
 
@@ -170,113 +131,34 @@ const WorkspacePage = () => {
     setEditOpen(true);
   };
 
-  const handleUpdateDocument = async () => {
+  const handleUpdate = async () => {
     if (!selectedDocument) return;
-
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_BASE_API_URL}/documents/${
-          selectedDocument._id
-        }/metadata`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ name: newName }),
-        }
+    const data = await updateDocument(token!, selectedDocument._id, newName);
+    if (data.document) {
+      setDocuments((prev) =>
+        prev.map((doc) =>
+          doc._id === selectedDocument._id ? { ...doc, name: newName } : doc
+        )
       );
-
-      const data = await response.json();
-      if (data.document) {
-        setDocuments((prev) =>
-          prev.map((doc) =>
-            doc._id === selectedDocument._id ? { ...doc, name: newName } : doc
-          )
-        );
-        setEditOpen(false);
-      }
-    } catch (error) {
-      console.error("Error updating docs:", error);
+      setEditOpen(false);
     }
   };
 
-  const handleViewDocument = async (docId: string) => {
-    try {
-      const res = await fetch(
-        `${import.meta.env.VITE_BASE_API_URL}/documents/${docId}/view`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      const data = await res.json();
-
-      if (data.success) {
-        setViewingDocument({
-          name: data.name,
-          type: data.type,
-          data: data.data,
-        });
-        setOpenViewDialog(true);
-      }
-    } catch (error) {
-      console.error("Error viewing document:", error);
+  const handleView = async (docId: string) => {
+    const data = await viewDocument(token!, docId);
+    if (data.success) {
+      setViewingDocument({ name: data.name, type: data.type, data: data.data });
+      setOpenViewDialog(true);
     }
   };
-
-  const handleDownload = async (docId: string, filename: string) => {
-    try {
-      const res = await fetch(
-        `${import.meta.env.VITE_BASE_API_URL}/documents/${docId}/download`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!res.ok) {
-        console.error("Download failed");
-        return;
-      }
-
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", filename);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Error downloading file:", error);
-    }
+  const handleDownload = async (docId: string, name: string) => {
+    await downloadDocument(token!, docId, name);
   };
 
   const handleSearch = async () => {
-    if (!searchQuery.trim()) {
-      fetchDocuments();
-      return;
-    }
-    try {
-      setLoading(true);
-      const url = `${
-        import.meta.env.VITE_BASE_API_URL
-      }/documents/search?workspaceId=${id}&query=${searchQuery}`;
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      setDocuments(data);
-    } catch (error) {
-      console.error("Error searching documents:", error);
-    } finally {
-      setLoading(false);
-    }
+    if (!searchQuery.trim()) return loadDocuments();
+    const data = await searchDocuments(token!, id!, searchQuery);
+    setDocuments(data);
   };
 
   return (
@@ -380,7 +262,7 @@ const WorkspacePage = () => {
               key={doc._id}
               onMouseEnter={() => {
                 setHoveredDocId(doc._id);
-                fetchPreview(doc._id);
+                handlePreview(doc._id);
               }}
               onMouseLeave={() => {
                 setHoveredDocId(null);
@@ -397,7 +279,7 @@ const WorkspacePage = () => {
                   "&:hover": { boxShadow: 4 },
                   cursor: "pointer",
                 }}
-                onClick={() => handleViewDocument(doc._id)}
+                onClick={() => handleView(doc._id)}
               >
                 <Typography fontWeight="600">{doc.name}</Typography>
                 <Typography variant="body2" color="textSecondary">
@@ -522,11 +404,7 @@ const WorkspacePage = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDeleteDialog(false)}>Cancel</Button>
-          <Button
-            variant="contained"
-            color="error"
-            onClick={handleDeleteDocument}
-          >
+          <Button variant="contained" color="error" onClick={handleDelete}>
             Delete
           </Button>
         </DialogActions>
@@ -547,7 +425,7 @@ const WorkspacePage = () => {
             <Button onClick={() => setEditOpen(false)}>Cancel</Button>
             <Button
               variant="contained"
-              onClick={handleUpdateDocument}
+              onClick={handleUpdate}
               sx={{ backgroundColor: "#d9c59fff" }}
             >
               Rename

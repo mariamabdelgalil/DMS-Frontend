@@ -13,75 +13,59 @@ import {
 } from "@mui/material";
 import { useSelector } from "react-redux";
 import type { RootState } from "../redux/store";
+import {
+  fetchDeletedDocuments,
+  restoreDocument,
+  permanentlyDeleteDocument,
+} from "../services/recyclebinService";
 
 interface Document {
   _id: string;
   name: string;
   uploadedAt: string;
 }
+
 const RecycleBinPage = () => {
   const token = useSelector((state: RootState) => state.token);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Fetch soft deleted documents
-  const fetchDeletedDocuments = async () => {
+  const loadDeletedDocuments = async () => {
     try {
       setLoading(true);
-      const res = await fetch(
-        `${import.meta.env.VITE_BASE_API_URL}/documents/deleted/all`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      const data = await res.json();
+      const data = await fetchDeletedDocuments(token!);
       if (data.success) {
         setDocuments(data.documents || []);
       }
     } catch (err) {
-      console.error("Error fetching deleted docs:", err);
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Restore document
   const handleRestore = async (id: string) => {
     try {
-      await fetch(
-        `${import.meta.env.VITE_BASE_API_URL}/documents/${id}/restore`,
-        {
-          method: "PUT",
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      fetchDeletedDocuments();
+      await restoreDocument(id, token!);
+      loadDeletedDocuments();
     } catch (err) {
-      console.error("Error restoring doc:", err);
+      console.error(err);
     }
   };
 
-  // Permanently delete
   const handlePermanentDelete = async (id: string) => {
     if (!window.confirm("This will permanently delete the document. Continue?"))
       return;
-
     try {
-      await fetch(
-        `${import.meta.env.VITE_BASE_API_URL}/documents/${id}/permanent-delete`,
-        {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      fetchDeletedDocuments();
+      await permanentlyDeleteDocument(id, token!);
+      loadDeletedDocuments();
     } catch (err) {
-      console.error("Error permanently deleting doc:", err);
+      console.error(err);
     }
   };
 
   useEffect(() => {
-    fetchDeletedDocuments();
+    loadDeletedDocuments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -116,7 +100,6 @@ const RecycleBinPage = () => {
               {documents.map((doc) => (
                 <TableRow key={doc._id}>
                   <TableCell>{doc.name}</TableCell>
-
                   <TableCell align="center">
                     <Button
                       variant="outlined"
