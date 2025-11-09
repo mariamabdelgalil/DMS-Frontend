@@ -10,6 +10,10 @@ import {
   Button,
   Paper,
   CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import { useSelector } from "react-redux";
 import type { RootState } from "../redux/store";
@@ -29,6 +33,11 @@ const RecycleBinPage = () => {
   const token = useSelector((state: RootState) => state.token);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+
+  // For confirmation dialog
+  const [openDialog, setOpenDialog] = useState(false);
+  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
+  const [selectedDocName, setSelectedDocName] = useState<string>("");
 
   const loadDeletedDocuments = async () => {
     try {
@@ -53,14 +62,27 @@ const RecycleBinPage = () => {
     }
   };
 
-  const handlePermanentDelete = async (id: string) => {
-    if (!window.confirm("This will permanently delete the document. Continue?"))
-      return;
+  const handleOpenDeleteDialog = (id: string, name: string) => {
+    setSelectedDocId(id);
+    setSelectedDocName(name);
+    setOpenDialog(true);
+  };
+
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setSelectedDocId(null);
+    setSelectedDocName("");
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!selectedDocId) return;
     try {
-      await permanentlyDeleteDocument(id, token!);
+      await permanentlyDeleteDocument(selectedDocId, token!);
       loadDeletedDocuments();
     } catch (err) {
       console.error(err);
+    } finally {
+      handleCloseDialog();
     }
   };
 
@@ -103,7 +125,7 @@ const RecycleBinPage = () => {
                   <TableCell align="center">
                     <Button
                       variant="outlined"
-                      sx={{ mr: 1 }}
+                      sx={{ mr: 1, textTransform: "none" }}
                       onClick={() => handleRestore(doc._id)}
                     >
                       Restore
@@ -111,7 +133,8 @@ const RecycleBinPage = () => {
                     <Button
                       variant="outlined"
                       color="error"
-                      onClick={() => handlePermanentDelete(doc._id)}
+                      onClick={() => handleOpenDeleteDialog(doc._id, doc.name)}
+                      sx={{ textTransform: "none" }}
                     >
                       Delete Permanently
                     </Button>
@@ -122,6 +145,28 @@ const RecycleBinPage = () => {
           </Table>
         )}
       </Paper>
+
+      {/* Confirmation Dialog */}
+      <Dialog open={openDialog} onClose={handleCloseDialog}>
+        <DialogTitle>Confirm Permanent Deletion</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to permanently delete{" "}
+            <strong>{selectedDocName}</strong>? This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog}>Cancel</Button>
+          <Button
+            onClick={handleConfirmDelete}
+            color="error"
+            variant="contained"
+            sx={{ textTransform: "none" }}
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

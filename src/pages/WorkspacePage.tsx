@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import type { RootState } from "../redux/store";
-import { Folder, Search as SearchIcon } from "@mui/icons-material";
+import { Folder, Search, HourglassBottom } from "@mui/icons-material";
 import {
   Box,
   Typography,
@@ -117,7 +117,7 @@ const WorkspacePage = () => {
   const handleDelete = async () => {
     if (!documentToDelete) return;
     const data = await deleteDocument(token!, documentToDelete);
-    if (data.message === "Document soft-deleted successfully") {
+    if (data.success) {
       setDocuments((prev) =>
         prev.filter((doc) => doc._id !== documentToDelete)
       );
@@ -170,7 +170,7 @@ const WorkspacePage = () => {
         alignItems="center"
         mb={3}
       >
-        <Typography variant="h5" fontWeight="bold">
+        <Typography variant="h5" fontWeight="bold" color="#8B4513">
           Workspace Documents
         </Typography>
 
@@ -184,10 +184,7 @@ const WorkspacePage = () => {
             InputProps={{
               endAdornment: (
                 <InputAdornment position="end">
-                  <SearchIcon
-                    sx={{ cursor: "pointer" }}
-                    onClick={handleSearch}
-                  />
+                  <Search sx={{ cursor: "pointer" }} onClick={handleSearch} />
                 </InputAdornment>
               ),
             }}
@@ -205,7 +202,9 @@ const WorkspacePage = () => {
               <MenuItem value="pdf">PDF</MenuItem>
               <MenuItem value="image/jpeg">Image (JPEG)</MenuItem>
               <MenuItem value="image/png">Image (PNG)</MenuItem>
-              <MenuItem value="application/msword">Word</MenuItem>
+              <MenuItem value="application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+                Word
+              </MenuItem>
             </Select>
           </FormControl>
 
@@ -227,7 +226,7 @@ const WorkspacePage = () => {
 
           <Button
             variant="contained"
-            sx={{ backgroundColor: "#8B4513" }}
+            sx={{ backgroundColor: "#8B4513", textTransform: "none" }}
             onClick={() => setOpenUploadDialog(true)}
           >
             Upload Document
@@ -237,7 +236,10 @@ const WorkspacePage = () => {
 
       {/* Document List */}
       {loading ? (
-        <Typography>Loading documents...</Typography>
+        <Box display="flex" alignItems="center" justifyContent="center" gap={2}>
+          <HourglassBottom fontSize="large" />
+          <Typography>Loading Documents...</Typography>
+        </Box>
       ) : documents.length === 0 ? (
         <Card
           sx={{
@@ -290,6 +292,7 @@ const WorkspacePage = () => {
                   size="small"
                   variant="outlined"
                   sx={{
+                    textTransform: "none",
                     color: "#6b4f2c",
                     borderColor: "#c7b299",
                     "&:hover": { backgroundColor: "#f4ede4" },
@@ -311,6 +314,7 @@ const WorkspacePage = () => {
                     setDocumentToDelete(doc._id);
                     setOpenDeleteDialog(true);
                   }}
+                  sx={{ textTransform: "none" }}
                 >
                   Delete
                 </Button>
@@ -323,6 +327,7 @@ const WorkspacePage = () => {
                       e.stopPropagation();
                       handleDownload(doc._id, doc.name);
                     }}
+                    sx={{ textTransform: "none" }}
                   >
                     Download
                   </Button>
@@ -426,7 +431,7 @@ const WorkspacePage = () => {
             <Button
               variant="contained"
               onClick={handleUpdate}
-              sx={{ backgroundColor: "#d9c59fff" }}
+              sx={{ backgroundColor: "#6b4f2c" }}
             >
               Rename
             </Button>

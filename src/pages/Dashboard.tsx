@@ -10,7 +10,7 @@ import {
   Typography,
   Grid,
 } from "@mui/material";
-import { Add, Folder } from "@mui/icons-material";
+import { Add, Folder, HourglassBottom } from "@mui/icons-material";
 import { useSelector } from "react-redux";
 import type { RootState } from "../redux/store";
 import { useNavigate } from "react-router-dom";
@@ -160,6 +160,7 @@ const Dashboard = () => {
             onClick={() => setOpen(true)}
             sx={{
               color: "#8B4513",
+              textTransform: "none",
               borderColor: "#8B4513",
               backgroundColor: "#d9c59fff",
             }}
@@ -169,7 +170,15 @@ const Dashboard = () => {
         </Box>
 
         {fetching ? (
-          <Typography>Loading Workspaces...</Typography>
+          <Box
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+            gap={2}
+          >
+            <HourglassBottom fontSize="large" />
+            <Typography>Loading Workspaces...</Typography>
+          </Box>
         ) : workspaces.length === 0 ? (
           <Card sx={{ padding: 4, textAlign: "center" }}>
             <Folder sx={{ fontSize: 40, color: "gray" }} />
@@ -239,6 +248,11 @@ const Dashboard = () => {
                           e.stopPropagation();
                           handleDeleteWorkspace(ws._id);
                         }}
+                        sx={{
+                          textTransform: "none",
+                          borderRadius: "12px",
+                          padding: "2px 10px",
+                        }}
                       >
                         Delete
                       </Button>
@@ -268,7 +282,11 @@ const Dashboard = () => {
               variant="contained"
               fullWidth
               disabled={loading}
-              sx={{ mt: 2, backgroundColor: "#d9c59fff" }}
+              sx={{
+                mt: 2,
+                backgroundColor: "#d9c59fff",
+                textTransform: "none",
+              }}
             >
               {loading ? "Creating..." : "Create"}
             </Button>
@@ -290,7 +308,7 @@ const Dashboard = () => {
           <Button
             variant="contained"
             fullWidth
-            sx={{ mt: 2, backgroundColor: "#d9c59fff" }}
+            sx={{ mt: 2, textTransform: "none", backgroundColor: "#6b4f2c" }}
             onClick={handleUpdateWorkspace}
           >
             Save
@@ -306,13 +324,14 @@ const Dashboard = () => {
         <DialogTitle>Delete Workspace</DialogTitle>
         <DialogContent>
           <Typography sx={{ mt: 2 }}>
-            Are you sure you want to delete this workspace?
+            Are you sure you want to delete this workspace? This action cannot
+            be undone. Fakkar fel mawdooo3
           </Typography>
           <Button
             variant="contained"
             fullWidth
             color="error"
-            sx={{ mt: 2 }}
+            sx={{ mt: 2, textTransform: "none" }}
             onClick={confirmDeleteWorkspace}
           >
             Delete

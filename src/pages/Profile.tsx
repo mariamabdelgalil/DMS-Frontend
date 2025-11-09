@@ -84,6 +84,7 @@ const ProfilePage = () => {
           onClick={handleSave}
           disabled={loading}
           sx={{
+            textTransform: "none",
             color: "#fff",
             backgroundColor: "#8B4513",
           }}

@@ -1,5 +1,5 @@
 import { AppBar, Toolbar, Typography, Box, Button } from "@mui/material";
-import { Delete, Face } from "@mui/icons-material";
+import { Delete, Face, AutoStories } from "@mui/icons-material";
 import type { ReactNode } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import type { RootState } from "../redux/store";
@@ -31,17 +31,24 @@ const Layout = ({ children }: LayoutProps) => {
             backgroundColor: "#f5f0e6",
           }}
         >
-          <Typography
-            variant="h6"
-            sx={{
-              fontWeight: "bold",
-              color: "#8B4513",
-              cursor: "pointer",
-            }}
+          <Box
+            display="flex"
+            alignItems="center"
+            gap={1}
             onClick={() => navigate("/Dashboard")}
           >
-            DocSimple
-          </Typography>
+            <AutoStories sx={{ color: "#8B4513", cursor: "pointer" }} />
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: "bold",
+                color: "#8B4513",
+                cursor: "pointer",
+              }}
+            >
+              DocSimple
+            </Typography>
+          </Box>
 
           <Box display="flex" gap={2} alignItems="center">
             <Typography variant="body1" color="#8B4513" fontWeight="700">
@@ -62,9 +69,9 @@ const Layout = ({ children }: LayoutProps) => {
                 color: "#fff",
                 backgroundColor: "#8B4513",
                 "&:hover": {
-                  backgroundColor: "#8B4513",
+                  backgroundColor: "#a08978ff",
                   color: "white",
-                  borderColor: "#8B4513",
+                  borderColor: "#a08978ff",
                 },
               }}
             >
