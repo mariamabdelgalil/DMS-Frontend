@@ -3,7 +3,13 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import type { RootState } from "../redux/store";
-import { Folder, Search, HourglassBottom } from "@mui/icons-material";
+import {
+  Folder,
+  Search,
+  HourglassBottom,
+  PictureAsPdf,
+  InsertDriveFile,
+} from "@mui/icons-material";
 import {
   Box,
   Typography,
@@ -25,7 +31,6 @@ import {
 
 import {
   fetchDocuments,
-  fetchPreview,
   uploadDocument,
   deleteDocument,
   updateDocument,
@@ -38,6 +43,8 @@ interface Document {
   _id: string;
   name: string;
   uploadedAt: string;
+  thumbnailBase64?: string | null;
+  type: string;
 }
 
 const WorkspacePage = () => {
@@ -61,14 +68,14 @@ const WorkspacePage = () => {
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<string | null>(null);
 
-  //update
+  // update
   const [editOpen, setEditOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(
     null
   );
   const [newName, setNewName] = useState("");
 
-  //view
+  // view
   const [openViewDialog, setOpenViewDialog] = useState(false);
   const [viewingDocument, setViewingDocument] = useState<{
     name: string;
@@ -76,9 +83,6 @@ const WorkspacePage = () => {
     data: string;
   } | null>(null);
 
-  //preview
-  const [hoveredPreview, setHoveredPreview] = useState<string | null>(null);
-  const [hoveredDocId, setHoveredDocId] = useState<string | null>(null);
   const loadDocuments = async () => {
     setLoading(true);
     try {
@@ -95,20 +99,12 @@ const WorkspacePage = () => {
     loadDocuments();
   }, [id, typeFilter, sortBy]);
 
-  const handlePreview = async (docId: string) => {
-    try {
-      const data = await fetchPreview(token!, docId);
-      if (data.success) setHoveredPreview(data.preview);
-    } catch (error) {
-      console.error("Error loading preview:", error);
-    }
-  };
-
   const handleUpload = async () => {
     if (!selectedFile || !id) return;
     const data = await uploadDocument(token!, selectedFile, id);
     if (data.success) {
-      setDocuments((prev) => [...prev, data.document]);
+      await loadDocuments();
+
       setOpenUploadDialog(false);
       setSelectedFile(null);
     }
@@ -151,6 +147,7 @@ const WorkspacePage = () => {
       setOpenViewDialog(true);
     }
   };
+
   const handleDownload = async (docId: string, name: string) => {
     await downloadDocument(token!, docId, name);
   };
@@ -288,18 +285,7 @@ const WorkspacePage = () => {
       ) : (
         <Grid container spacing={{ xs: 7, sm: 2, md: 3 }}>
           {documents.map((doc) => (
-            <Grid
-              key={doc._id}
-              onMouseEnter={() => {
-                setHoveredDocId(doc._id);
-                handlePreview(doc._id);
-              }}
-              onMouseLeave={() => {
-                setHoveredDocId(null);
-                setHoveredPreview(null);
-              }}
-              sx={{ position: "relative" }}
-            >
+            <Grid key={doc._id} sx={{ position: "relative" }}>
               <Card
                 sx={{
                   p: { xs: 2, sm: 3 },
@@ -313,20 +299,45 @@ const WorkspacePage = () => {
                 }}
                 onClick={() => handleView(doc._id)}
               >
-                <Typography
-                  fontWeight="600"
-                  sx={{
-                    fontSize: { xs: "0.9rem", sm: "1rem" },
-                    wordBreak: "break-word",
-                  }}
-                >
+                {/* Thumbnail or Icon */}
+                {doc.type.startsWith("image/") && doc.thumbnailBase64 ? (
+                  <img
+                    src={doc.thumbnailBase64}
+                    alt="Thumbnail"
+                    style={{
+                      width: "100%",
+                      height: "160px",
+                      objectFit: "cover",
+                      borderRadius: "6px",
+                      marginBottom: "8px",
+                    }}
+                  />
+                ) : doc.type === "application/pdf" ? (
+                  <PictureAsPdf
+                    sx={{
+                      fontSize: 152,
+                      color: "error.main",
+                      mb: 1,
+                      mt: 1,
+                      alignSelf: "center",
+                    }}
+                  />
+                ) : (
+                  <InsertDriveFile
+                    sx={{
+                      fontSize: 152,
+                      color: "text.secondary",
+                      mb: 1,
+                      mt: 1,
+                      alignSelf: "center",
+                    }}
+                  />
+                )}
+
+                <Typography fontWeight="600" sx={{ fontSize: "1rem" }}>
                   {doc.name}
                 </Typography>
-                <Typography
-                  variant="body2"
-                  color="textSecondary"
-                  sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
-                >
+                <Typography variant="body2" color="textSecondary">
                   Uploaded on {new Date(doc.uploadedAt).toLocaleDateString()}
                 </Typography>
 
@@ -338,7 +349,6 @@ const WorkspacePage = () => {
                     color: "#6b4f2c",
                     borderColor: "#c7b299",
                     "&:hover": { backgroundColor: "#f4ede4" },
-                    fontSize: { xs: "0.75rem", sm: "0.875rem" },
                   }}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -357,60 +367,21 @@ const WorkspacePage = () => {
                     setDocumentToDelete(doc._id);
                     setOpenDeleteDialog(true);
                   }}
-                  sx={{
-                    textTransform: "none",
-                    fontSize: { xs: "0.75rem", sm: "0.875rem" },
-                  }}
                 >
                   Delete
                 </Button>
 
-                <Stack direction="column">
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDownload(doc._id, doc.name);
-                    }}
-                    sx={{
-                      textTransform: "none",
-                      fontSize: { xs: "0.75rem", sm: "0.875rem" },
-                    }}
-                  >
-                    Download
-                  </Button>
-                </Stack>
-              </Card>
-
-              {hoveredDocId === doc._id && hoveredPreview && (
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: "-10px",
-                    left: { xs: "50%", md: "120px" },
-                    transform: { xs: "translateX(-50%)", md: "none" },
-                    width: "200px",
-                    height: "auto",
-                    backgroundColor: "white",
-                    padding: "8px",
-                    boxShadow: 3,
-                    borderRadius: "8px",
-                    zIndex: 10,
-                    display: { xs: "none", md: "block" },
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDownload(doc._id, doc.name);
                   }}
                 >
-                  <img
-                    src={hoveredPreview}
-                    alt="Preview"
-                    style={{
-                      width: "100%",
-                      height: "auto",
-                      borderRadius: "6px",
-                    }}
-                  />
-                </Box>
-              )}
+                  Download
+                </Button>
+              </Card>
             </Grid>
           ))}
         </Grid>
@@ -447,7 +418,9 @@ const WorkspacePage = () => {
               style={{ border: "none" }}
             />
           ) : (
-            <Typography>File type not supported for viewing.</Typography>
+            <Typography>
+              File type not supported for viewing. Download to view.
+            </Typography>
           )}
         </DialogContent>
         <DialogActions>
