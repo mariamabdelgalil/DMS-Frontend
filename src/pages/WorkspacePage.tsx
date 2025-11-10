@@ -541,7 +541,7 @@ const WorkspacePage = () => {
             variant="contained"
             onClick={handleUpload}
             disabled={!selectedFile}
-            sx={{ backgroundColor: "#d9c59fff" }}
+            sx={{ backgroundColor: "#6b4f2c" }}
           >
             Upload
           </Button>

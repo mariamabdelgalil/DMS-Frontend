@@ -357,7 +357,7 @@ const Dashboard = () => {
               disabled={loading}
               sx={{
                 mt: 2,
-                backgroundColor: "#d9c59fff",
+                backgroundColor: "#6b4f2c",
                 textTransform: "none",
               }}
             >
