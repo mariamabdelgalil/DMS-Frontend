@@ -1,5 +1,6 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useEffect, useState } from "react";
+import { useDebounce } from "../hooks/useDebounce";
 import { useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import type { RootState } from "../redux/store";
@@ -36,7 +37,6 @@ import {
   updateDocument,
   viewDocument,
   downloadDocument,
-  searchDocuments,
 } from "../services/documentService";
 
 interface Document {
@@ -50,11 +50,18 @@ interface Document {
 const WorkspacePage = () => {
   const { id } = useParams();
   const token = useSelector((state: RootState) => state.token);
+
+  // Main documents state (filtered/searched results shown to user)
   const [documents, setDocuments] = useState<Document[]>([]);
+
+  // Cache of all documents (before search filtering)
+  const [allDocuments, setAllDocuments] = useState<Document[]>([]);
+
   const [loading, setLoading] = useState(true);
 
   // search state
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const debouncedSearch = useDebounce(searchQuery, 500);
 
   // filter and Sort State
   const [typeFilter, setTypeFilter] = useState<string>("");
@@ -87,7 +94,11 @@ const WorkspacePage = () => {
     setLoading(true);
     try {
       const data = await fetchDocuments(token!, id!, typeFilter, sortBy);
-      if (data.success) setDocuments(data.documents);
+      console.log("Fetched documents:", data);
+      if (data.success) {
+        setDocuments(data.documents);
+        setAllDocuments(data.documents); // Cache the full list
+      }
     } catch (err) {
       console.error("Error fetching docs:", err);
     } finally {
@@ -104,7 +115,6 @@ const WorkspacePage = () => {
     const data = await uploadDocument(token!, selectedFile, id);
     if (data.success) {
       await loadDocuments();
-
       setOpenUploadDialog(false);
       setSelectedFile(null);
     }
@@ -114,7 +124,11 @@ const WorkspacePage = () => {
     if (!documentToDelete) return;
     const data = await deleteDocument(token!, documentToDelete);
     if (data.success) {
+      // Update both documents and allDocuments cache
       setDocuments((prev) =>
+        prev.filter((doc) => doc._id !== documentToDelete)
+      );
+      setAllDocuments((prev) =>
         prev.filter((doc) => doc._id !== documentToDelete)
       );
       setOpenDeleteDialog(false);
@@ -131,11 +145,14 @@ const WorkspacePage = () => {
     if (!selectedDocument) return;
     const data = await updateDocument(token!, selectedDocument._id, newName);
     if (data.document) {
-      setDocuments((prev) =>
+      // Update both documents and allDocuments cache
+      const updateFn = (prev: Document[]) =>
         prev.map((doc) =>
           doc._id === selectedDocument._id ? { ...doc, name: newName } : doc
-        )
-      );
+        );
+
+      setDocuments(updateFn);
+      setAllDocuments(updateFn);
       setEditOpen(false);
     }
   };
@@ -152,11 +169,37 @@ const WorkspacePage = () => {
     await downloadDocument(token!, docId, name);
   };
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return loadDocuments();
-    const data = await searchDocuments(token!, id!, searchQuery);
-    setDocuments(data);
-  };
+  // Handle search with cache restoration
+  useEffect(() => {
+    const fetchFilteredDocs = async () => {
+      try {
+        // If search is empty, restore from cache instead of fetching
+        if (debouncedSearch.trim() === "") {
+          setDocuments(allDocuments);
+          return;
+        }
+
+        const res = await fetch(
+          `http://localhost:3000/api/documents/search?workspaceId=${id}&query=${debouncedSearch}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        if (!res.ok) {
+          console.error("Search request failed:", res.status);
+          return;
+        }
+
+        const data = await res.json();
+        console.log("Search results:", data);
+
+        setDocuments(data.documents);
+      } catch (err) {
+        console.error("Error fetching search results:", err);
+      }
+    };
+
+    fetchFilteredDocs();
+  }, [debouncedSearch, allDocuments]);
 
   return (
     <Box p={{ xs: 2, sm: 3, md: 4 }}>
@@ -188,12 +231,11 @@ const WorkspacePage = () => {
             size="small"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             sx={{ width: { xs: "100%", sm: "auto" } }}
             InputProps={{
               endAdornment: (
                 <InputAdornment position="end">
-                  <Search sx={{ cursor: "pointer" }} onClick={handleSearch} />
+                  <Search />
                 </InputAdornment>
               ),
             }}
@@ -279,7 +321,9 @@ const WorkspacePage = () => {
         >
           <Folder sx={{ fontSize: 40, color: "gray" }} />
           <Typography variant="h6" sx={{ mt: 2, color: "gray" }}>
-            No documents found in this workspace
+            {searchQuery.trim()
+              ? "No documents match your search"
+              : "No documents found in this workspace"}
           </Typography>
         </Card>
       ) : (
