@@ -46,7 +46,7 @@ interface Document {
   thumbnailBase64?: string | null;
   type: string;
 }
-
+const BASE_URL = import.meta.env.VITE_BASE_API_URL;
 const WorkspacePage = () => {
   const { id } = useParams();
   const token = useSelector((state: RootState) => state.token);
@@ -180,8 +180,13 @@ const WorkspacePage = () => {
         }
 
         const res = await fetch(
-          `http://localhost:3000/api/documents/search?workspaceId=${id}&query=${debouncedSearch}`,
-          { headers: { Authorization: `Bearer ${token}` } }
+          `${BASE_URL}/documents/search?workspaceId=${id}&query=${debouncedSearch}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "ngrok-skip-browser-warning": "true",
+            },
+          }
         );
 
         if (!res.ok) {
@@ -329,7 +334,7 @@ const WorkspacePage = () => {
       ) : (
         <Grid container spacing={{ xs: 7, sm: 2, md: 3 }}>
           {documents.map((doc) => (
-            <Grid key={doc._id} sx={{ position: "relative" }}>
+            <Grid key={doc._id} sx={{ position: "relative", mb: 4 }}>
               <Card
                 sx={{
                   p: { xs: 2, sm: 3 },

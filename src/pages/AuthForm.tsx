@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from "react";
 import {
   Box,
@@ -9,6 +8,7 @@ import {
   CardContent,
 } from "@mui/material";
 import { Formik } from "formik";
+import type { FormikHelpers } from "formik";
 import * as Yup from "yup";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
@@ -29,25 +29,44 @@ const loginSchema = Yup.object().shape({
   password: Yup.string().required("Required"),
 });
 
+interface LoginValues {
+  email: string;
+  password: string;
+}
+
+interface RegisterValues {
+  name: string;
+  email: string;
+  password: string;
+  nid: string;
+}
+
 const AuthForm = () => {
   const [pageType, setPageType] = useState<"login" | "register">("login");
   const isLogin = pageType === "login";
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const handleFormSubmit = async (values: any, onSubmitProps: any) => {
+  const handleFormSubmit = async (
+    values: LoginValues | RegisterValues,
+    onSubmitProps: FormikHelpers<LoginValues | RegisterValues>
+  ) => {
     try {
       if (isLogin) {
-        const data = await loginUser(values);
+        const data = await loginUser(values as LoginValues);
         dispatch(setLogin({ user: data.user, token: data.token }));
         navigate("/dashboard");
       } else {
-        await registerUser(values);
+        await registerUser(values as RegisterValues);
         alert("Registration successful! Please login.");
         setPageType("login");
       }
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err) {
+      if (err instanceof Error) {
+        alert(err.message);
+      } else {
+        console.error("Unexpected error:", err);
+      }
     } finally {
       onSubmitProps.resetForm();
     }

@@ -13,14 +13,20 @@ export const fetchDocuments = async (
   if (params.toString()) url += `?${params.toString()}`;
 
   const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "ngrok-skip-browser-warning": "true",
+    },
   });
   return res.json();
 };
 
 export const fetchPreview = async (token: string, docId: string) => {
   const res = await fetch(`${BASE_URL}/documents/${docId}/preview`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "ngrok-skip-browser-warning": "true",
+    },
   });
   return res.json();
 };
@@ -36,7 +42,10 @@ export const uploadDocument = async (
 
   const res = await fetch(`${BASE_URL}/documents/upload`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "ngrok-skip-browser-warning": "true",
+    },
     body: formData,
   });
   return res.json();
@@ -45,7 +54,10 @@ export const uploadDocument = async (
 export const deleteDocument = async (token: string, docId: string) => {
   const res = await fetch(`${BASE_URL}/documents/${docId}/soft-delete`, {
     method: "PUT",
-    headers: { Authorization: `Bearer ${token}` },
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "ngrok-skip-browser-warning": "true",
+    },
   });
   return res.json();
 };
@@ -60,6 +72,7 @@ export const updateDocument = async (
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
+      "ngrok-skip-browser-warning": "true",
     },
     body: JSON.stringify({ name: newName }),
   });
@@ -68,7 +81,10 @@ export const updateDocument = async (
 
 export const viewDocument = async (token: string, docId: string) => {
   const res = await fetch(`${BASE_URL}/documents/${docId}/view`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "ngrok-skip-browser-warning": "true",
+    },
   });
   return res.json();
 };
@@ -80,7 +96,10 @@ export const downloadDocument = async (
 ) => {
   const res = await fetch(`${BASE_URL}/documents/${docId}/download`, {
     method: "GET",
-    headers: { Authorization: `Bearer ${token}` },
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "ngrok-skip-browser-warning": "true",
+    },
   });
   if (!res.ok) throw new Error("Download failed");
 
@@ -102,7 +121,12 @@ export const searchDocuments = async (
 ) => {
   const res = await fetch(
     `${BASE_URL}/documents/search?workspaceId=${workspaceId}&query=${query}`,
-    { headers: { Authorization: `Bearer ${token}` } }
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "ngrok-skip-browser-warning": "true",
+      },
+    }
   );
   return res.json();
 };

@@ -3,7 +3,10 @@ const BASE_URL = import.meta.env.VITE_BASE_API_URL;
 export const fetchWorkspaces = async (nid: string, token: string) => {
   try {
     const response = await fetch(`${BASE_URL}/workspace/${nid}`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "ngrok-skip-browser-warning": "true",
+      },
     });
     const data = await response.json();
     return data;
@@ -24,6 +27,7 @@ export const createWorkspace = async (
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
+        "ngrok-skip-browser-warning": "true",
       },
       body: JSON.stringify({ name, userNid }),
     });
@@ -46,6 +50,7 @@ export const updateWorkspace = async (
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
+        "ngrok-skip-browser-warning": "true",
       },
       body: JSON.stringify({ name: newName }),
     });
@@ -61,7 +66,10 @@ export const deleteWorkspace = async (id: string, token: string) => {
   try {
     const response = await fetch(`${BASE_URL}/workspace/${id}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "ngrok-skip-browser-warning": "true",
+      },
     });
     const data = await response.json();
     return data;
