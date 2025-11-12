@@ -1,9 +1,16 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useEffect, useState } from "react";
+import { useDebounce } from "../hooks/useDebounce";
 import { useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import type { RootState } from "../redux/store";
-import { Folder, Search, HourglassBottom } from "@mui/icons-material";
+import {
+  Folder,
+  Search,
+  HourglassBottom,
+  PictureAsPdf,
+  InsertDriveFile,
+} from "@mui/icons-material";
 import {
   Box,
   Typography,
@@ -25,29 +32,36 @@ import {
 
 import {
   fetchDocuments,
-  fetchPreview,
   uploadDocument,
   deleteDocument,
   updateDocument,
   viewDocument,
   downloadDocument,
-  searchDocuments,
 } from "../services/documentService";
 
 interface Document {
   _id: string;
   name: string;
   uploadedAt: string;
+  thumbnailBase64?: string | null;
+  type: string;
 }
-
+const BASE_URL = import.meta.env.VITE_BASE_API_URL;
 const WorkspacePage = () => {
   const { id } = useParams();
   const token = useSelector((state: RootState) => state.token);
+
+  // Main documents state (filtered/searched results shown to user)
   const [documents, setDocuments] = useState<Document[]>([]);
+
+  // Cache of all documents (before search filtering)
+  const [allDocuments, setAllDocuments] = useState<Document[]>([]);
+
   const [loading, setLoading] = useState(true);
 
   // search state
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const debouncedSearch = useDebounce(searchQuery, 500);
 
   // filter and Sort State
   const [typeFilter, setTypeFilter] = useState<string>("");
@@ -61,14 +75,14 @@ const WorkspacePage = () => {
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<string | null>(null);
 
-  //update
+  // update
   const [editOpen, setEditOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(
     null
   );
   const [newName, setNewName] = useState("");
 
-  //view
+  // view
   const [openViewDialog, setOpenViewDialog] = useState(false);
   const [viewingDocument, setViewingDocument] = useState<{
     name: string;
@@ -76,14 +90,15 @@ const WorkspacePage = () => {
     data: string;
   } | null>(null);
 
-  //preview
-  const [hoveredPreview, setHoveredPreview] = useState<string | null>(null);
-  const [hoveredDocId, setHoveredDocId] = useState<string | null>(null);
   const loadDocuments = async () => {
     setLoading(true);
     try {
       const data = await fetchDocuments(token!, id!, typeFilter, sortBy);
-      if (data.success) setDocuments(data.documents);
+      console.log("Fetched documents:", data);
+      if (data.success) {
+        setDocuments(data.documents);
+        setAllDocuments(data.documents); // Cache the full list
+      }
     } catch (err) {
       console.error("Error fetching docs:", err);
     } finally {
@@ -95,20 +110,11 @@ const WorkspacePage = () => {
     loadDocuments();
   }, [id, typeFilter, sortBy]);
 
-  const handlePreview = async (docId: string) => {
-    try {
-      const data = await fetchPreview(token!, docId);
-      if (data.success) setHoveredPreview(data.preview);
-    } catch (error) {
-      console.error("Error loading preview:", error);
-    }
-  };
-
   const handleUpload = async () => {
     if (!selectedFile || !id) return;
     const data = await uploadDocument(token!, selectedFile, id);
     if (data.success) {
-      setDocuments((prev) => [...prev, data.document]);
+      await loadDocuments();
       setOpenUploadDialog(false);
       setSelectedFile(null);
     }
@@ -118,7 +124,11 @@ const WorkspacePage = () => {
     if (!documentToDelete) return;
     const data = await deleteDocument(token!, documentToDelete);
     if (data.success) {
+      // Update both documents and allDocuments cache
       setDocuments((prev) =>
+        prev.filter((doc) => doc._id !== documentToDelete)
+      );
+      setAllDocuments((prev) =>
         prev.filter((doc) => doc._id !== documentToDelete)
       );
       setOpenDeleteDialog(false);
@@ -135,11 +145,14 @@ const WorkspacePage = () => {
     if (!selectedDocument) return;
     const data = await updateDocument(token!, selectedDocument._id, newName);
     if (data.document) {
-      setDocuments((prev) =>
+      // Update both documents and allDocuments cache
+      const updateFn = (prev: Document[]) =>
         prev.map((doc) =>
           doc._id === selectedDocument._id ? { ...doc, name: newName } : doc
-        )
-      );
+        );
+
+      setDocuments(updateFn);
+      setAllDocuments(updateFn);
       setEditOpen(false);
     }
   };
@@ -151,15 +164,47 @@ const WorkspacePage = () => {
       setOpenViewDialog(true);
     }
   };
+
   const handleDownload = async (docId: string, name: string) => {
     await downloadDocument(token!, docId, name);
   };
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return loadDocuments();
-    const data = await searchDocuments(token!, id!, searchQuery);
-    setDocuments(data);
-  };
+  // Handle search with cache restoration
+  useEffect(() => {
+    const fetchFilteredDocs = async () => {
+      try {
+        // If search is empty, restore from cache instead of fetching
+        if (debouncedSearch.trim() === "") {
+          setDocuments(allDocuments);
+          return;
+        }
+
+        const res = await fetch(
+          `${BASE_URL}/documents/search?workspaceId=${id}&query=${debouncedSearch}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "ngrok-skip-browser-warning": "true",
+            },
+          }
+        );
+
+        if (!res.ok) {
+          console.error("Search request failed:", res.status);
+          return;
+        }
+
+        const data = await res.json();
+        console.log("Search results:", data);
+
+        setDocuments(data.documents);
+      } catch (err) {
+        console.error("Error fetching search results:", err);
+      }
+    };
+
+    fetchFilteredDocs();
+  }, [debouncedSearch, allDocuments]);
 
   return (
     <Box p={{ xs: 2, sm: 3, md: 4 }}>
@@ -191,12 +236,11 @@ const WorkspacePage = () => {
             size="small"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             sx={{ width: { xs: "100%", sm: "auto" } }}
             InputProps={{
               endAdornment: (
                 <InputAdornment position="end">
-                  <Search sx={{ cursor: "pointer" }} onClick={handleSearch} />
+                  <Search />
                 </InputAdornment>
               ),
             }}
@@ -282,24 +326,15 @@ const WorkspacePage = () => {
         >
           <Folder sx={{ fontSize: 40, color: "gray" }} />
           <Typography variant="h6" sx={{ mt: 2, color: "gray" }}>
-            No documents found in this workspace
+            {searchQuery.trim()
+              ? "No documents match your search"
+              : "No documents found in this workspace"}
           </Typography>
         </Card>
       ) : (
         <Grid container spacing={{ xs: 7, sm: 2, md: 3 }}>
           {documents.map((doc) => (
-            <Grid
-              key={doc._id}
-              onMouseEnter={() => {
-                setHoveredDocId(doc._id);
-                handlePreview(doc._id);
-              }}
-              onMouseLeave={() => {
-                setHoveredDocId(null);
-                setHoveredPreview(null);
-              }}
-              sx={{ position: "relative" }}
-            >
+            <Grid key={doc._id} sx={{ position: "relative", mb: 4 }}>
               <Card
                 sx={{
                   p: { xs: 2, sm: 3 },
@@ -313,20 +348,45 @@ const WorkspacePage = () => {
                 }}
                 onClick={() => handleView(doc._id)}
               >
-                <Typography
-                  fontWeight="600"
-                  sx={{
-                    fontSize: { xs: "0.9rem", sm: "1rem" },
-                    wordBreak: "break-word",
-                  }}
-                >
+                {/* Thumbnail or Icon */}
+                {doc.type.startsWith("image/") && doc.thumbnailBase64 ? (
+                  <img
+                    src={doc.thumbnailBase64}
+                    alt="Thumbnail"
+                    style={{
+                      width: "100%",
+                      height: "160px",
+                      objectFit: "cover",
+                      borderRadius: "6px",
+                      marginBottom: "8px",
+                    }}
+                  />
+                ) : doc.type === "application/pdf" ? (
+                  <PictureAsPdf
+                    sx={{
+                      fontSize: 152,
+                      color: "error.main",
+                      mb: 1,
+                      mt: 1,
+                      alignSelf: "center",
+                    }}
+                  />
+                ) : (
+                  <InsertDriveFile
+                    sx={{
+                      fontSize: 152,
+                      color: "text.secondary",
+                      mb: 1,
+                      mt: 1,
+                      alignSelf: "center",
+                    }}
+                  />
+                )}
+
+                <Typography fontWeight="600" sx={{ fontSize: "1rem" }}>
                   {doc.name}
                 </Typography>
-                <Typography
-                  variant="body2"
-                  color="textSecondary"
-                  sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
-                >
+                <Typography variant="body2" color="textSecondary">
                   Uploaded on {new Date(doc.uploadedAt).toLocaleDateString()}
                 </Typography>
 
@@ -338,7 +398,6 @@ const WorkspacePage = () => {
                     color: "#6b4f2c",
                     borderColor: "#c7b299",
                     "&:hover": { backgroundColor: "#f4ede4" },
-                    fontSize: { xs: "0.75rem", sm: "0.875rem" },
                   }}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -357,60 +416,21 @@ const WorkspacePage = () => {
                     setDocumentToDelete(doc._id);
                     setOpenDeleteDialog(true);
                   }}
-                  sx={{
-                    textTransform: "none",
-                    fontSize: { xs: "0.75rem", sm: "0.875rem" },
-                  }}
                 >
                   Delete
                 </Button>
 
-                <Stack direction="column">
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDownload(doc._id, doc.name);
-                    }}
-                    sx={{
-                      textTransform: "none",
-                      fontSize: { xs: "0.75rem", sm: "0.875rem" },
-                    }}
-                  >
-                    Download
-                  </Button>
-                </Stack>
-              </Card>
-
-              {hoveredDocId === doc._id && hoveredPreview && (
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: "-10px",
-                    left: { xs: "50%", md: "120px" },
-                    transform: { xs: "translateX(-50%)", md: "none" },
-                    width: "200px",
-                    height: "auto",
-                    backgroundColor: "white",
-                    padding: "8px",
-                    boxShadow: 3,
-                    borderRadius: "8px",
-                    zIndex: 10,
-                    display: { xs: "none", md: "block" },
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDownload(doc._id, doc.name);
                   }}
                 >
-                  <img
-                    src={hoveredPreview}
-                    alt="Preview"
-                    style={{
-                      width: "100%",
-                      height: "auto",
-                      borderRadius: "6px",
-                    }}
-                  />
-                </Box>
-              )}
+                  Download
+                </Button>
+              </Card>
             </Grid>
           ))}
         </Grid>
@@ -447,7 +467,9 @@ const WorkspacePage = () => {
               style={{ border: "none" }}
             />
           ) : (
-            <Typography>File type not supported for viewing.</Typography>
+            <Typography>
+              File type not supported for viewing. Download to view.
+            </Typography>
           )}
         </DialogContent>
         <DialogActions>
