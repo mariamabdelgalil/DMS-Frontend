@@ -6,7 +6,11 @@ import {
   Typography,
   Card,
   CardContent,
+  Dialog,
+  DialogTitle,
+  DialogContent,
 } from "@mui/material";
+import { CheckCircle } from "@mui/icons-material";
 import { Formik } from "formik";
 import type { FormikHelpers } from "formik";
 import * as Yup from "yup";
@@ -43,6 +47,7 @@ interface RegisterValues {
 
 const AuthForm = () => {
   const [pageType, setPageType] = useState<"login" | "register">("login");
+  const [modalOpen, setModalOpen] = useState(false);
   const isLogin = pageType === "login";
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -58,7 +63,8 @@ const AuthForm = () => {
         navigate("/dashboard");
       } else {
         await registerUser(values as RegisterValues);
-        alert("Registration successful! Please login.");
+        // alert("Registration successful! Please login.");
+        setModalOpen(true);
         setPageType("login");
       }
     } catch (err) {
@@ -223,6 +229,32 @@ const AuthForm = () => {
           }}
         />
       </Card>
+
+      <Dialog
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        sx={{
+          "& .MuiDialog-paper": {
+            margin: { xs: 2, sm: 3 },
+            width: { xs: "calc(100% - 32px)", sm: "auto" },
+          },
+        }}
+      >
+        <DialogTitle>Registration Successful</DialogTitle>
+        <DialogContent>
+          <Typography>Account Created Successfully, Please Login.</Typography>
+          <CheckCircle
+            sx={{
+              fontSize: 60,
+              color: "green",
+              mt: 2,
+              mb: 2,
+              mx: "auto",
+              display: "block",
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };

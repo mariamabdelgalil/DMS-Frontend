@@ -11,7 +11,7 @@ import {
   Typography,
   Grid,
 } from "@mui/material";
-import { Add, Folder } from "@mui/icons-material";
+import { Add, Folder, FiberNew } from "@mui/icons-material";
 import { useSelector } from "react-redux";
 import type { RootState } from "../redux/store";
 import { useNavigate } from "react-router-dom";
@@ -206,7 +206,18 @@ const Dashboard = () => {
               No workspaces yet
             </Typography>
             <Button
-              sx={{ mt: 2, width: { xs: "100%", sm: "auto" } }}
+              sx={{
+                mt: 2,
+                width: {
+                  xs: "100%",
+                  sm: "auto",
+                  color: "#f0ece8ff",
+                  textTransform: "none",
+                  borderColor: "#8B4513",
+                  backgroundColor: "#1f7c1aff",
+                },
+              }}
+              startIcon={<FiberNew />}
               variant="contained"
               onClick={() => setOpen(true)}
             >

@@ -413,6 +413,7 @@ const WorkspacePage = () => {
                     setDocumentToDelete(doc._id);
                     setOpenDeleteDialog(true);
                   }}
+                  sx={{ textTransform: "none" }}
                 >
                   Delete
                 </Button>
@@ -424,6 +425,7 @@ const WorkspacePage = () => {
                     e.stopPropagation();
                     handleDownload(doc._id, doc.name);
                   }}
+                  sx={{ textTransform: "none" }}
                 >
                   Download
                 </Button>
