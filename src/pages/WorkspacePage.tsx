@@ -70,6 +70,7 @@ const WorkspacePage = () => {
   // upload state
   const [openUploadDialog, setOpenUploadDialog] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   // delete state
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
@@ -111,12 +112,23 @@ const WorkspacePage = () => {
 
   const handleUpload = async () => {
     if (!selectedFile || !id) return;
-    const data = await uploadDocument(token!, selectedFile, id);
-    if (data.success) {
-      await loadDocuments();
-      setOpenUploadDialog(false);
-      setSelectedFile(null);
+    setUploading(true);
+    try {
+      const data = await uploadDocument(token!, selectedFile, id);
+      if (data.success) {
+        await loadDocuments();
+        handleCloseUploadDialog();
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setUploading(false);
     }
+  };
+
+  const handleCloseUploadDialog = () => {
+    setOpenUploadDialog(false);
+    setSelectedFile(null);
   };
 
   const handleDelete = async () => {
@@ -537,7 +549,7 @@ const WorkspacePage = () => {
       {/* Upload Dialog */}
       <Dialog
         open={openUploadDialog}
-        onClose={() => setOpenUploadDialog(false)}
+        onClose={handleCloseUploadDialog}
         sx={{
           "& .MuiDialog-paper": {
             margin: { xs: 2, sm: 3 },
@@ -551,20 +563,21 @@ const WorkspacePage = () => {
           <TextField
             type="file"
             fullWidth
+            inputProps={{ key: openUploadDialog ? "file-input" : "reset" }}
             onChange={(e) =>
               setSelectedFile((e.target as HTMLInputElement).files?.[0] || null)
             }
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenUploadDialog(false)}>Cancel</Button>
+          <Button onClick={handleCloseUploadDialog}>Cancel</Button>
           <Button
             variant="contained"
             onClick={handleUpload}
-            disabled={!selectedFile}
+            disabled={!selectedFile || uploading}
             sx={{ backgroundColor: "#6b4f2c" }}
           >
-            Upload
+            {uploading ? "Uploading..." : "Upload"}
           </Button>
         </DialogActions>
       </Dialog>
