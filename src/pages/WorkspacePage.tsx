@@ -7,11 +7,11 @@ import type { RootState } from "../redux/store";
 import {
   Folder,
   Search,
-  HourglassBottom,
   PictureAsPdf,
   InsertDriveFile,
 } from "@mui/icons-material";
 import {
+  CircularProgress,
   Box,
   Typography,
   Card,
@@ -94,7 +94,6 @@ const WorkspacePage = () => {
     setLoading(true);
     try {
       const data = await fetchDocuments(token!, id!, typeFilter, sortBy);
-      console.log("Fetched documents:", data);
       if (data.success) {
         setDocuments(data.documents);
         setAllDocuments(data.documents); // Cache the full list
@@ -195,7 +194,6 @@ const WorkspacePage = () => {
         }
 
         const data = await res.json();
-        console.log("Search results:", data);
 
         setDocuments(data.documents);
       } catch (err) {
@@ -309,8 +307,7 @@ const WorkspacePage = () => {
       {/* Document List */}
       {loading ? (
         <Box display="flex" alignItems="center" justifyContent="center" gap={2}>
-          <HourglassBottom fontSize="large" />
-          <Typography>Loading Documents...</Typography>
+          <CircularProgress size={120} color="secondary" />
         </Box>
       ) : documents.length === 0 ? (
         <Card

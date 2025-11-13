@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
+  CircularProgress,
   Button,
   Dialog,
   DialogTitle,
@@ -10,7 +11,7 @@ import {
   Typography,
   Grid,
 } from "@mui/material";
-import { Add, Folder, HourglassBottom } from "@mui/icons-material";
+import { Add, Folder } from "@mui/icons-material";
 import { useSelector } from "react-redux";
 import type { RootState } from "../redux/store";
 import { useNavigate } from "react-router-dom";
@@ -188,10 +189,7 @@ const Dashboard = () => {
             gap={2}
             flexDirection={{ xs: "column", sm: "row" }}
           >
-            <HourglassBottom fontSize="large" />
-            <Typography sx={{ textAlign: "center" }}>
-              Loading Workspaces...
-            </Typography>
+            <CircularProgress size={120} color="secondary" />
           </Box>
         ) : workspaces.length === 0 ? (
           <Card
