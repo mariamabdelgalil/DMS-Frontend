@@ -75,6 +75,7 @@ const WorkspacePage = () => {
   // delete state
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // update
   const [editOpen, setEditOpen] = useState(false);
@@ -82,14 +83,16 @@ const WorkspacePage = () => {
     null
   );
   const [newName, setNewName] = useState("");
+  const [renaming, setRenaming] = useState(false);
 
-  // view
+  // view - MODIFIED
   const [openViewDialog, setOpenViewDialog] = useState(false);
   const [viewingDocument, setViewingDocument] = useState<{
     name: string;
     type: string;
     data: string;
   } | null>(null);
+  const [loadingView, setLoadingView] = useState(false);
 
   const loadDocuments = async () => {
     setLoading(true);
@@ -133,16 +136,23 @@ const WorkspacePage = () => {
 
   const handleDelete = async () => {
     if (!documentToDelete) return;
-    const data = await deleteDocument(token!, documentToDelete);
-    if (data.success) {
-      // Update both documents and allDocuments cache
-      setDocuments((prev) =>
-        prev.filter((doc) => doc._id !== documentToDelete)
-      );
-      setAllDocuments((prev) =>
-        prev.filter((doc) => doc._id !== documentToDelete)
-      );
-      setOpenDeleteDialog(false);
+    setDeleting(true);
+    try {
+      const data = await deleteDocument(token!, documentToDelete);
+      if (data.success) {
+        // Update both documents and allDocuments cache
+        setDocuments((prev) =>
+          prev.filter((doc) => doc._id !== documentToDelete)
+        );
+        setAllDocuments((prev) =>
+          prev.filter((doc) => doc._id !== documentToDelete)
+        );
+        setOpenDeleteDialog(false);
+      }
+    } catch (err) {
+      console.error("Error deleting document:", err);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -154,33 +164,61 @@ const WorkspacePage = () => {
 
   const handleUpdate = async () => {
     if (!selectedDocument) return;
-    const data = await updateDocument(token!, selectedDocument._id, newName);
-    if (data.document) {
-      // Update both documents and allDocuments cache
-      const updateFn = (prev: Document[]) =>
-        prev.map((doc) =>
-          doc._id === selectedDocument._id ? { ...doc, name: newName } : doc
-        );
+    setRenaming(true);
+    try {
+      const data = await updateDocument(token!, selectedDocument._id, newName);
+      if (data.document) {
+        // Update both documents and allDocuments cache
+        const updateFn = (prev: Document[]) =>
+          prev.map((doc) =>
+            doc._id === selectedDocument._id ? { ...doc, name: newName } : doc
+          );
 
-      setDocuments(updateFn);
-      setAllDocuments(updateFn);
-      setEditOpen(false);
+        setDocuments(updateFn);
+        setAllDocuments(updateFn);
+        setEditOpen(false);
+      }
+    } catch (err) {
+      console.error("Error renaming document:", err);
+    } finally {
+      setRenaming(false);
     }
   };
 
+  // MODIFIED: handleView now opens modal immediately with loading state
   const handleView = async (docId: string) => {
-    const data = await viewDocument(token!, docId);
-    if (data.success) {
-      setViewingDocument({ name: data.name, type: data.type, data: data.data });
-      setOpenViewDialog(true);
+    // Open the dialog immediately
+    setOpenViewDialog(true);
+    setLoadingView(true);
+    setViewingDocument(null);
+
+    try {
+      const data = await viewDocument(token!, docId);
+      if (data.success) {
+        setViewingDocument({
+          name: data.name,
+          type: data.type,
+          data: data.data,
+        });
+      }
+    } catch (err) {
+      console.error("Error viewing document:", err);
+      setOpenViewDialog(false);
+    } finally {
+      setLoadingView(false);
     }
+  };
+
+  const handleCloseView = () => {
+    setOpenViewDialog(false);
+    setViewingDocument(null);
+    setLoadingView(false);
   };
 
   const handleDownload = async (docId: string, name: string) => {
     await downloadDocument(token!, docId, name);
   };
 
-  // Handle search with cache restoration
   useEffect(() => {
     const fetchFilteredDocs = async () => {
       try {
@@ -447,9 +485,10 @@ const WorkspacePage = () => {
         </Grid>
       )}
 
+      {/* MODIFIED: View Dialog with Loading State */}
       <Dialog
         open={openViewDialog}
-        onClose={() => setOpenViewDialog(false)}
+        onClose={handleCloseView}
         maxWidth="lg"
         fullWidth
         sx={{
@@ -460,31 +499,55 @@ const WorkspacePage = () => {
         }}
       >
         <DialogTitle sx={{ fontSize: { xs: "1rem", sm: "1.25rem" } }}>
-          {viewingDocument?.name}
+          {viewingDocument?.name || "Loading..."}
         </DialogTitle>
         <DialogContent>
-          {viewingDocument?.type.startsWith("image/") ? (
-            <img
-              src={viewingDocument.data}
-              alt={viewingDocument.name}
-              style={{ width: "100%", height: "auto", borderRadius: "8px" }}
-            />
-          ) : viewingDocument?.type === "application/pdf" ? (
-            <iframe
-              src={viewingDocument.data}
-              title={viewingDocument.name}
-              width="100%"
-              height="600px"
-              style={{ border: "none" }}
-            />
+          {loadingView ? (
+            <Box
+              display="flex"
+              flexDirection="column"
+              alignItems="center"
+              justifyContent="center"
+              minHeight="400px"
+              gap={2}
+            >
+              <CircularProgress size={60} sx={{ color: "#8B4513" }} />
+              <Typography color="textSecondary">Loading document...</Typography>
+              <Typography color="textSecondary">
+                Don't worry. It works just wait! It's a connection issue due to
+                running the server locally, will be fixed soon!
+              </Typography>
+            </Box>
+          ) : viewingDocument ? (
+            <>
+              {viewingDocument.type.startsWith("image/") ? (
+                <img
+                  src={viewingDocument.data}
+                  alt={viewingDocument.name}
+                  style={{ width: "100%", height: "auto", borderRadius: "8px" }}
+                />
+              ) : viewingDocument.type === "application/pdf" ? (
+                <iframe
+                  src={viewingDocument.data}
+                  title={viewingDocument.name}
+                  width="100%"
+                  height="600px"
+                  style={{ border: "none" }}
+                />
+              ) : (
+                <Typography>
+                  File type not supported for viewing. Download to view.
+                </Typography>
+              )}
+            </>
           ) : (
-            <Typography>
-              File type not supported for viewing. Download to view.
+            <Typography color="error">
+              Failed to load document. Please try again.
             </Typography>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenViewDialog(false)}>Close</Button>
+          <Button onClick={handleCloseView}>Close</Button>
         </DialogActions>
       </Dialog>
 
@@ -507,8 +570,13 @@ const WorkspacePage = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDeleteDialog(false)}>Cancel</Button>
-          <Button variant="contained" color="error" onClick={handleDelete}>
-            Delete
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleDelete}
+            disabled={deleting}
+          >
+            {deleting ? "Deleting..." : "Delete"}
           </Button>
         </DialogActions>
       </Dialog>
@@ -539,8 +607,9 @@ const WorkspacePage = () => {
               variant="contained"
               onClick={handleUpdate}
               sx={{ backgroundColor: "#6b4f2c" }}
+              disabled={renaming}
             >
-              Rename
+              {renaming ? "Renaming..." : "Rename"}
             </Button>
           </DialogActions>
         </DialogContent>
@@ -568,6 +637,12 @@ const WorkspacePage = () => {
               setSelectedFile((e.target as HTMLInputElement).files?.[0] || null)
             }
           />
+          {uploading && (
+            <Typography sx={{ mt: 2 }} color="textSecondary">
+              Uploading file, please wait. If it takes too long it's due to
+              server running locally, will be fixed soon :D
+            </Typography>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseUploadDialog}>Cancel</Button>

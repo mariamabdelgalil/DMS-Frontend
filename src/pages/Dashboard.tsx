@@ -45,9 +45,11 @@ const Dashboard = () => {
   const [selectedWorkspace, setSelectedWorkspace] = useState<Workspace | null>(
     null
   );
+  const [renaming, setRenaming] = useState(false);
   const [newName, setNewName] = useState("");
 
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(
     null
   );
@@ -101,6 +103,7 @@ const Dashboard = () => {
   // Update workspace name
   const handleUpdateWorkspace = async () => {
     if (!selectedWorkspace) return;
+    setRenaming(true);
     try {
       const data = await updateWorkspace(
         selectedWorkspace._id,
@@ -117,6 +120,8 @@ const Dashboard = () => {
       }
     } catch (error) {
       console.error(error);
+    } finally {
+      setRenaming(false);
     }
   };
 
@@ -128,6 +133,7 @@ const Dashboard = () => {
 
   const confirmDeleteWorkspace = async () => {
     if (!selectedWorkspaceId) return;
+    setDeleting(true);
     try {
       const data = await deleteWorkspace(selectedWorkspaceId, token!);
       if (data.success) {
@@ -140,6 +146,7 @@ const Dashboard = () => {
     } finally {
       setOpenDeleteDialog(false);
       setSelectedWorkspaceId(null);
+      setDeleting(false);
     }
   };
 
@@ -404,8 +411,9 @@ const Dashboard = () => {
             fullWidth
             sx={{ mt: 2, textTransform: "none", backgroundColor: "#6b4f2c" }}
             onClick={handleUpdateWorkspace}
+            disabled={renaming}
           >
-            Save
+            {renaming ? "Renaming..." : "Rename"}
           </Button>
         </DialogContent>
       </Dialog>
@@ -441,8 +449,9 @@ const Dashboard = () => {
             color="error"
             sx={{ mt: 2, textTransform: "none" }}
             onClick={confirmDeleteWorkspace}
+            disabled={deleting}
           >
-            Delete
+            {deleting ? "Deleting..." : "Delete"}
           </Button>
         </DialogContent>
       </Dialog>

@@ -38,6 +38,8 @@ const RecycleBinPage = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [selectedDocName, setSelectedDocName] = useState<string>("");
+  const [deleting, setDeleting] = useState(false);
+  const [restoring, setRestoring] = useState(false);
 
   const loadDeletedDocuments = async () => {
     try {
@@ -54,11 +56,14 @@ const RecycleBinPage = () => {
   };
 
   const handleRestore = async (id: string) => {
+    setRestoring(true);
     try {
       await restoreDocument(id, token!);
       loadDeletedDocuments();
     } catch (err) {
       console.error(err);
+    } finally {
+      setRestoring(false);
     }
   };
 
@@ -76,6 +81,7 @@ const RecycleBinPage = () => {
 
   const handleConfirmDelete = async () => {
     if (!selectedDocId) return;
+    setDeleting(true);
     try {
       await permanentlyDeleteDocument(selectedDocId, token!);
       loadDeletedDocuments();
@@ -83,6 +89,7 @@ const RecycleBinPage = () => {
       console.error(err);
     } finally {
       handleCloseDialog();
+      setDeleting(false);
     }
   };
 
@@ -131,8 +138,9 @@ const RecycleBinPage = () => {
                         mb: { xs: 1, sm: 0 },
                       }}
                       onClick={() => handleRestore(doc._id)}
+                      disabled={restoring}
                     >
-                      Restore
+                      {restoring ? "Restoring..." : "Restore"}
                     </Button>
                     <Button
                       variant="outlined"
@@ -166,8 +174,9 @@ const RecycleBinPage = () => {
             color="error"
             variant="contained"
             sx={{ textTransform: "none" }}
+            disabled={deleting}
           >
-            Delete
+            {deleting ? "Deleting..." : "Delete"}
           </Button>
         </DialogActions>
       </Dialog>
