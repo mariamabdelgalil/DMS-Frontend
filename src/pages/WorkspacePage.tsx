@@ -62,6 +62,7 @@ const WorkspacePage = () => {
   // search state
   const [searchQuery, setSearchQuery] = useState<string>("");
   const debouncedSearch = useDebounce(searchQuery, 500);
+  const [searchLoading, setSearchLoading] = useState(false);
 
   // filter and Sort State
   const [typeFilter, setTypeFilter] = useState<string>("");
@@ -225,9 +226,11 @@ const WorkspacePage = () => {
         // If search is empty, restore from cache instead of fetching
         if (debouncedSearch.trim() === "") {
           setDocuments(allDocuments);
+          setSearchLoading(false);
           return;
         }
 
+        setSearchLoading(true);
         const res = await fetch(
           `${BASE_URL}/documents/search?workspaceId=${id}&query=${debouncedSearch}`,
           {
@@ -240,6 +243,7 @@ const WorkspacePage = () => {
 
         if (!res.ok) {
           console.error("Search request failed:", res.status);
+          setSearchLoading(false);
           return;
         }
 
@@ -248,6 +252,8 @@ const WorkspacePage = () => {
         setDocuments(data.documents);
       } catch (err) {
         console.error("Error fetching search results:", err);
+      } finally {
+        setSearchLoading(false);
       }
     };
 
@@ -355,9 +361,9 @@ const WorkspacePage = () => {
       </Box>
 
       {/* Document List */}
-      {loading ? (
+      {loading || searchLoading ? (
         <Box display="flex" alignItems="center" justifyContent="center" gap={2}>
-          <CircularProgress size={120} color="secondary" />
+          <CircularProgress size={80} sx={{ mt: 5, color: "#8B4513" }} />
         </Box>
       ) : documents.length === 0 ? (
         <Card
@@ -514,7 +520,7 @@ const WorkspacePage = () => {
               <CircularProgress size={60} sx={{ color: "#8B4513" }} />
               <Typography color="textSecondary">Loading document...</Typography>
               <Typography color="textSecondary">
-                Don't worry. It works just wait! It's a connection issue due to
+                Don't worry. It works just wait! It's a connection delay due to
                 running the server locally, will be fixed soon!
               </Typography>
             </Box>
@@ -640,7 +646,7 @@ const WorkspacePage = () => {
           {uploading && (
             <Typography sx={{ mt: 2 }} color="textSecondary">
               Uploading file, please wait. If it takes too long it's due to
-              server running locally, will be fixed soon :D
+              server running locally, will be fixed soon!
             </Typography>
           )}
         </DialogContent>

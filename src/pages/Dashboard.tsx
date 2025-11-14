@@ -196,7 +196,7 @@ const Dashboard = () => {
             gap={2}
             flexDirection={{ xs: "column", sm: "row" }}
           >
-            <CircularProgress size={120} color="secondary" />
+            <CircularProgress size={80} sx={{ mt: 5, color: "#8B4513" }} />
           </Box>
         ) : workspaces.length === 0 ? (
           <Card
